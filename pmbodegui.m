@@ -17,36 +17,40 @@ function pmbodegui(sys)
     % --- UI Layout ---
     % Left Panel for Individual Terms
     left_panel = uipanel('Title', 'Individual Terms', 'FontSize', 12, ...
-                         'Position', [0.05 0.1 0.4 0.85]);
-    ax_mag_ind = axes('Parent', left_panel, 'Position', [0.1 0.55 0.8 0.35]);
+                         'Position', [0.05 0.2 0.43 0.75]);
+    ax_mag_ind = axes('Parent', left_panel, 'Position', [0.1 0.55 0.85 0.35]);
     title(ax_mag_ind, 'Magnitude');
     ylabel(ax_mag_ind, 'Magnitude (dB)');
     grid(ax_mag_ind, 'on');
-    ax_phase_ind = axes('Parent', left_panel, 'Position', [0.1 0.1 0.8 0.35]);
+    grid(ax_mag_ind, 'minor');
+    ax_phase_ind = axes('Parent', left_panel, 'Position', [0.1 0.1 0.85 0.35]);
     title(ax_phase_ind, 'Phase');
     ylabel(ax_phase_ind, 'Phase (deg)');
     xlabel(ax_phase_ind, 'Frequency (rad/s)');
     grid(ax_phase_ind, 'on');
+    grid(ax_phase_ind, 'minor');
 
     % Right Panel for Asymptotic Bode Plot
     right_panel = uipanel('Title', 'Asymptotic Bode Plot', 'FontSize', 12, ...
-                          'Position', [0.55 0.1 0.4 0.85]);
-    ax_mag_final = axes('Parent', right_panel, 'Position', [0.1 0.55 0.8 0.35]);
+                          'Position', [0.52 0.2 0.43 0.75]);
+    ax_mag_final = axes('Parent', right_panel, 'Position', [0.1 0.55 0.85 0.35]);
     title(ax_mag_final, 'Magnitude');
     ylabel(ax_mag_final, 'Magnitude (dB)');
     grid(ax_mag_final, 'on');
-    ax_phase_final = axes('Parent', right_panel, 'Position', [0.1 0.1 0.8 0.35]);
+    grid(ax_mag_final, 'minor');
+    ax_phase_final = axes('Parent', right_panel, 'Position', [0.1 0.1 0.85 0.35]);
     title(ax_phase_final, 'Phase');
     ylabel(ax_phase_final, 'Phase (deg)');
     xlabel(ax_phase_final, 'Frequency (rad/s)');
     grid(ax_phase_final, 'on');
+    grid(ax_phase_final, 'minor');
 
     % Info Text Area
     info_panel = uipanel('Title', 'Transfer Function Info', 'FontSize', 12, ...
-                         'Position', [0.05 0.01 0.9 0.08]);
+                         'Position', [0.05 0.02 0.9 0.15]);
     info_text = uicontrol('Parent', info_panel, 'Style', 'text', 'FontSize', 10, ...
-                          'HorizontalAlignment', 'left', ...
-                          'Position', [10 5 800 20]);
+                          'HorizontalAlignment', 'left', 'Units', 'normalized', ...
+                          'Position', [0.01 0.05 0.98 0.9]);
 
     % --- Transfer function parsing ---
     [num, den] = tfdata(sys, 'v');
@@ -127,17 +131,22 @@ function pmbodegui(sys)
             legend_entries{end+1} = 'Differentiator';
         elseif isreal(z(i)) % 1st order zero
             w_z = -z(i);
-            mag = 20*log10(sqrt(1 + (w/w_z).^2));
-            phase = atand(w/w_z);
+            mag = zeros(size(w));
+            mag(w >= w_z) = 20*log10(w(w >= w_z)/w_z);
+            phase = zeros(size(w));
+            phase(w > w_z*10) = 90;
+            sel = w >= w_z/10 & w <= w_z*10;
+            phase(sel) = 45 * (log10(w(sel)) - log10(w_z/10));
             legend_entries{end+1} = sprintf('Zero at %g', w_z);
         else % 2nd order zero
             if imag(z(i)) > 0
                 wn = abs(z(i));
-                zeta = -real(z(i))/wn;
-                u = w/wn;
-                mag = 20*log10(sqrt((1-u.^2).^2 + (2*zeta*u).^2));
-                phase = atand((2*zeta*u)./(1-u.^2));
-                phase(u > 1) = phase(u > 1) + 180;
+                mag = zeros(size(w));
+                mag(w >= wn) = 40*log10(w(w >= wn)/wn);
+                phase = zeros(size(w));
+                phase(w > wn*10) = 180;
+                sel = w >= wn/10 & w <= wn*10;
+                phase(sel) = 90 * (log10(w(sel)) - log10(wn/10));
                 legend_entries{end+1} = sprintf('Complex Zero at %g rad/s', wn);
             else
                 continue; % Skip conjugate pair
@@ -157,17 +166,22 @@ function pmbodegui(sys)
             legend_entries{end+1} = 'Integrator';
         elseif isreal(p(i)) % 1st order pole
             w_p = -p(i);
-            mag = -20*log10(sqrt(1 + (w/w_p).^2));
-            phase = -atand(w/w_p);
+            mag = zeros(size(w));
+            mag(w >= w_p) = -20*log10(w(w >= w_p)/w_p);
+            phase = zeros(size(w));
+            phase(w > w_p*10) = -90;
+            sel = w >= w_p/10 & w <= w_p*10;
+            phase(sel) = -45 * (log10(w(sel)) - log10(w_p/10));
             legend_entries{end+1} = sprintf('Pole at %g', w_p);
         else % 2nd order pole
              if imag(p(i)) > 0
                 wn = abs(p(i));
-                zeta = -real(p(i))/wn;
-                u = w/wn;
-                mag = -20*log10(sqrt((1-u.^2).^2 + (2*zeta*u).^2));
-                phase = -atand((2*zeta*u)./(1-u.^2));
-                phase(u > 1) = phase(u > 1) - 180;
+                mag = zeros(size(w));
+                mag(w >= wn) = -40*log10(w(w >= wn)/wn);
+                phase = zeros(size(w));
+                phase(w > wn*10) = -180;
+                sel = w >= wn/10 & w <= wn*10;
+                phase(sel) = -90 * (log10(w(sel)) - log10(wn/10));
                 legend_entries{end+1} = sprintf('Complex Pole at %g rad/s', wn);
              else
                  continue; % Skip conjugate
@@ -190,8 +204,10 @@ function pmbodegui(sys)
     hold(ax_phase_ind, 'off');
 
     % Display info
-    tf_str = evalc('disp(sys)');
-    info_str = sprintf('G(s) = %s\nTerms: %s', tf_str, strjoin(terms, ', '));
-    set(info_text, 'String', info_str);
+    tf_str_raw = evalc('disp(sys)');
+    tf_lines = strsplit(strtrim(tf_str_raw), '\n');
+    terms_str = ['Terms: ' strjoin(terms, ', ')];
+    display_str = [tf_lines, {terms_str}];
+    set(info_text, 'String', display_str);
 
 end
